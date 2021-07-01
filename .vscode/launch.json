@@ -5,12 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: test_key",
+            "name": "test_key",
             "type": "python",
             "request": "launch",
             "program": "mdh.py",
             "console": "integratedTerminal",
             "sudo" : true
+        }
+        {
+            "name": "test_key Win",
+            "type": "python",
+            "request": "launch",
+            "program": "mdh.py",
+            "console": "integratedTerminal",
         }
     ]
 }

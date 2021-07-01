@@ -1,2 +1,4 @@
 pyyaml
 pypresence
+keyboard
+requests

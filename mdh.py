@@ -9,12 +9,21 @@ from datetime import datetime, timedelta
 from pypresence import Client
 from pypresence.exceptions import DiscordError, ServerError
 
-LOG_FORMAT = "[%(asctime)s][%(levelname)8s][%(funcName)20s:%(lineno)3s]: %(message)s"
+LOG_FORMAT = "[%(asctime)s][%(levelname)8s][%(funcName)20s]: %(message)s"
 
 DEFAUT_CONF = {
     "CLIENT_ID": None,
     "CLIENT_SECRET": None,
-    "HOTKEYS": {},
+    "HOTKEYS": [
+        {
+            "actions": [
+                {"toggle_mute": {}},
+                {"wait": {"time": 2}},
+                {"toggle_mute": {}},
+            ],
+            "key": "ctrl+shift+F12",
+        }
+    ],
     "__access_token": None,
     "__expire_token_date": None,
     "__refresh_token": None,
@@ -35,22 +44,52 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 
 def toggle_mute(args):
     voice_status = discord_client.get_voice_settings()
+    logging.debug(f"Set mute to: {not voice_status['data']['mute']}")
     discord_client.set_voice_settings(mute=not voice_status["data"]["mute"])
 
 
 def toggle_deaf(args):
     voice_status = discord_client.get_voice_settings()
+    logging.debug(f"Set deaf to: {not voice_status['data']['deaf']}")
     discord_client.set_voice_settings(deaf=not voice_status["data"]["deaf"])
 
 
-ACTIONS = {"toggle_mute": toggle_mute, "toggle_deaf": toggle_deaf}
+def wait(args):
+    if args.get("time") is not None and type(args.get("time") == int):
+        logging.debug(f"Wait for {args['time']} seconds")
+        time.sleep(args["time"])
+    else:
+        logging.error('Invalid or missing argument for "wait" !')
 
 
+def join_voice_channel(args):
+    if args.get("chanel_id") is not None:
+        # TODO force parameter ?
+        # selected = discord_client.get_selected_voice_channel()
+        # if selected["data"] is not None:
+        #     discord_client.select_voice_channel(None)
+        try:
+            discord_client.select_voice_channel(args.get("chanel_id"))
+        except ServerError as error:
+            logging.error(f"Can't connect to voice channel: {error.args[0]}")
+        except DiscordError:
+            pass
+    else:
+        logging.error('Invalid or missing argument for "join_voice_channel" !')
+
+
+ACTIONS = {
+    "toggle_mute": toggle_mute,
+    "toggle_deaf": toggle_deaf,
+    "wait": wait,
+    "join_voice_channel": join_voice_channel,
+}
 
 
 # =================================================================
 #                           Code
 # =================================================================
+
 
 def get_config():
     try:
@@ -62,14 +101,20 @@ def get_config():
         return data
     except FileNotFoundError:
         with open("config.yml", "w") as f:
-            yaml.dump(DEFAUT_CONF, f)
+            yaml.dump(DEFAUT_CONF, f, Dumper=Dumper)
         logging.fatal("Can't find config, generating defaut... Please fill the config file.")
         exit(1)
 
 
+# Workaround to fix list indentation issues see https://github.com/yaml/pyyaml/issues/234#issuecomment-765894586
+class Dumper(yaml.Dumper):
+    def increase_indent(self, flow=False, *args, **kwargs):
+        return super().increase_indent(flow=flow, indentless=False)
+
+
 def save_config(conf):
     with open("config.yml", "w") as f:
-        yaml.dump(conf, f)
+        yaml.dump(conf, f, Dumper=Dumper)
     logging.debug("Config saved")
 
 
@@ -163,16 +208,30 @@ def refresh_token(config):
     return r.json()
 
 
+def action_handler(actions):
+    for action_obj in actions:
+        action_id, args = next(iter((action_obj.items())))
+        action = ACTIONS.get(action_id)
+        if action is not None:
+            action(args)
+        else:
+            logging.error(f"Invalid hotkey action '{action_id}'")
+
+
 def init_hotkeys(config):
     logging.info("Registering hotkeys...")
-    for hotkey, value in config['HOTKEYS'].items():
-        for action_id, args in value.items():
-            action = ACTIONS.get(action_id)
-            if action is not None:
-                keyboard.add_hotkey(hotkey, action, args=[args])
-                logging.info(f"...{hotkey} -> {action_id} Ok")
-            else:
-                logging.erro(f"Invalid hotkey action '{action_id}'")
+    for item in config["HOTKEYS"]:
+        keyboard.add_hotkey(item["key"], action_handler, args=[item["actions"]])
+        logging.info(f"...{item['key']} -> Registered")
+
+    # for hotkey, value in .items():
+    #     for action_id, args in value.items():
+    #         action = ACTIONS.get(action_id)
+    #         if action is not None:
+    #             keyboard.add_hotkey(hotkey, action, args=[args])
+    #             logging.info(f"...{hotkey} -> {action_id} Ok")
+    #         else:
+    #             logging.error(f"Invalid hotkey action '{action_id}'")
 
 
 config = get_config()
