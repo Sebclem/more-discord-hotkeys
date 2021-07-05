@@ -69,10 +69,16 @@ def join_voice_channel(args):
             discord_client.select_voice_channel(args.get("chanel_id"), force=True)
         except ServerError as error:
             logging.error(f"Can't connect to voice channel: {error.args[0]}")
-        except DiscordError:
-            pass
     else:
         logging.error('Invalid or missing argument for "join_voice_channel" !')
+
+
+def leave_voice_channel(args):
+    try:
+        logging.debug("Leaving voice channel")
+        discord_client.select_voice_channel(None)
+    except ServerError as error:
+        logging.error(f"Can't connect to voice channel: {error.args[0]}")
 
 
 ACTIONS = {
@@ -80,6 +86,7 @@ ACTIONS = {
     "toggle_deaf": toggle_deaf,
     "wait": wait,
     "join_voice_channel": join_voice_channel,
+    "leave_voice_channel": leave_voice_channel,
 }
 
 
