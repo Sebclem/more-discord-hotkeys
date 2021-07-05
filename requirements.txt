@@ -1,4 +1,5 @@
 pyyaml
-pypresence
+# pypresence
+git+https://github.com/Sebclem/pypresence.git@select_voice_channel_path
 keyboard
 requests

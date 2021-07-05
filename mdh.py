@@ -64,12 +64,9 @@ def wait(args):
 
 def join_voice_channel(args):
     if args.get("chanel_id") is not None:
-        # TODO force parameter ?
-        # selected = discord_client.get_selected_voice_channel()
-        # if selected["data"] is not None:
-        #     discord_client.select_voice_channel(None)
         try:
-            discord_client.select_voice_channel(args.get("chanel_id"))
+            logging.debug(f"Connecting to voice channel with id: {args['chanel_id']}")
+            discord_client.select_voice_channel(args.get("chanel_id"), force=True)
         except ServerError as error:
             logging.error(f"Can't connect to voice channel: {error.args[0]}")
         except DiscordError:
